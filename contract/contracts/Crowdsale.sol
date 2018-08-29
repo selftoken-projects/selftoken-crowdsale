@@ -65,7 +65,7 @@ contract Crowdsale is Ownable {
     }
 
     function purchase (address referer) public payable onlyWhileOpen {
-        require(msg.value > minPurchaseWei);
+        require(msg.value >= minPurchaseWei);
         
         bool validReferer = tokenContract.balanceOf(referer) > 0;
 
@@ -73,7 +73,7 @@ contract Crowdsale is Ownable {
         uint bonus = base.mul(referalBonusPercentage).div(100);
 
         uint totalToken = validReferer ? base.add(bonus).add(bonus) : base.add(bonus);
-        require(salableTokenAmount() > totalToken);
+        require(salableTokenAmount() >= totalToken);
 
         tokenContract.transferFrom(account, msg.sender, base.add(bonus));
         
