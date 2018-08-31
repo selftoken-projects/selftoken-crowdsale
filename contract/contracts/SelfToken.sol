@@ -6,6 +6,6 @@ import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
  * @title 
  * @dev ERC20 Token, with the addition of symbol, name and decimals and an initial supply
  */
-contract SelfToken is StandardToken, Pausable {
+contract SelfToken is StandardToken {
     using SafeMath for uint256;
 }

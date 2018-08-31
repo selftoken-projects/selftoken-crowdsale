@@ -74,7 +74,7 @@ contract Crowdsale is Ownable {
 
     function purchase (address referer) public payable onlyWhileOpen {
 
-        require(this.balance + msg.value <= hardTop);
+        require(address(this).balance + msg.value <= hardTop);
         require(msg.value >= minPurchaseWei);
         
         bool validReferer = tokenContract.balanceOf(referer) > 0;
