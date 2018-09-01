@@ -26,12 +26,15 @@ contract Crowdsale is Ownable {
     uint256 public closingTime;
     uint minPurchaseWei = 0.1 ether;
 
+    uint256 public hardTop; // how many eth can be recieved in this contract
+
     constructor (address tokenContractAddr, address _account, uint price, uint _openingTime, uint _closingTime) public {
         tokenContract = ERC20(tokenContractAddr);
         account = _account;
         priceInWei = price;
         openingTime = _openingTime;
         closingTime = _closingTime;
+        hardTop = 10000 ether;
     }
 
     modifier onlyWhileOpen {
@@ -46,6 +49,11 @@ contract Crowdsale is Ownable {
     //? emit event
     function setPrice (uint price) public onlyOwner {
         priceInWei = price;
+    }
+
+    //? emit event
+    function setHardtop (uint _hardTop) public onlyOwner {
+        hardTop = _hardTop;
     }
 
     function setReferalBonusPercentage (uint n) public onlyOwner {
@@ -65,6 +73,8 @@ contract Crowdsale is Ownable {
     }
 
     function purchase (address referer) public payable onlyWhileOpen {
+
+        require(address(this).balance + msg.value <= hardTop);
         require(msg.value >= minPurchaseWei);
         
         bool validReferer = tokenContract.balanceOf(referer) > 0;
