@@ -141,17 +141,14 @@ contract Crowdsale is Claimable {
             uint256 _referSenderTokens = _tokensPurchased.mul(referSenderBonusPercentage).div(100);
             uint256 _referReceiverTokens = _tokensPurchased.mul(referReceiverBonusPercentage).div(100);
 
-            tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
             tokensReferSenderBonus[_referSender] = tokensReferSenderBonus[_referSender].add(_referSenderTokens);
             tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
-        } else {
-            tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            _referSender = address(0); // means that the referSender is not valid
         }
+        tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
 
         emit TokensPurchased(
             msg.sender,
-            _referSender,
+            (isValidReferSender) ? _referSender : address(0),
             _weiPaid,
             _tokensPurchased
         );
