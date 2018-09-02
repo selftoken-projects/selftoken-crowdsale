@@ -98,9 +98,10 @@ contract Crowdsale is Claimable {
         _;
     }
 
-    constructor (uint _openingTime, uint _closingTime) public {
+    constructor (uint _openingTime, uint _closingTime, uint _pioneerTimeEnd) public {
         openingTime = _openingTime;
         closingTime = _closingTime;
+        pioneerTimeEnd = _pioneerTimeEnd;
     }
 
     // -----------------------------------------
