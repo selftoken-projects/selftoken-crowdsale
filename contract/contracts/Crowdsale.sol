@@ -18,7 +18,6 @@ contract Crowdsale is Claimable {
     // If ERC20 decimals = 18, then a token unit is (10 ** (-18)) token
     uint256 public rate = 3600;
 
-    // TODO: delete openingTime?
     uint256 public openingTime; // 2018/9/3 12:00 (UTC+8)
     uint256 public closingTime; // 2018/10/31 24:00 (UTC+8)
 
@@ -28,7 +27,6 @@ contract Crowdsale is Claimable {
     uint256 public minTokensPurchased = 200 ether; // 200 tokens
     uint256 public hardCap = 10000 ether; // hard cap
 
-    // TODO: change to better name
     uint256 public referSenderBonusPercentage = 5; // 5%. inviter's bonus
     uint256 public referReceiverBonusPercentage = 5; // 5%. purchaser's bonus
 
@@ -111,7 +109,6 @@ contract Crowdsale is Claimable {
     // Crowdsale external interface
     // -----------------------------------------
 
-    // TODO: check if there's any possibility that address(0) can be a pioneer.
     function () external payable onlyWhileOpen {
         purchaseTokens(address(0));
     }
