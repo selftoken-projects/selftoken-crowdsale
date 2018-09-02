@@ -29,8 +29,8 @@ contract Crowdsale is Claimable {
     uint256 public hardCap = 10000 ether; // hard cap
 
     // TODO: change to better name
-    uint256 public referralBonusPercentage = 5; // 5%. both referrer's bonus
-    uint256 public referredBonusPercentage = 5; // 5%. referred purchaser's bonus
+    uint256 public referSenderBonusPercentage = 5; // 5%. inviter's bonus
+    uint256 public referReceiverBonusPercentage = 5; // 5%. purchaser's bonus
 
     // airdrop 45000 tokens to pioneers whenever 1000 ETH is raised.
     // until 10000 ETH is reached (or 10 stages)
@@ -63,12 +63,12 @@ contract Crowdsale is Claimable {
     /// @dev totalPioneerWeightInStage[_stageIdx]
     mapping(uint256 => uint256) public totalPioneerWeightInStage;
 
-    // including purchased tokens and referred bonus
+    // not including any bonus
     mapping(address => uint256) public tokensPurchased;
 
-    mapping(address => uint256) public tokensReferralBonus;
+    mapping(address => uint256) public tokensReferSenderBonus;
 
-    mapping(address => uint256) public tokensReferredBonus;
+    mapping(address => uint256) public tokensReferReceiverBonus;
 
     // -----------------------------------------
     // events
@@ -77,24 +77,24 @@ contract Crowdsale is Claimable {
     /**
     * Event for token purchase logging
     * @param purchaser who paid for the tokens
-    * @param referrer who referred the purchaser. address(0) if not valid referrer
+    * @param referSender who invited the purchaser. address(0) if not valid referSender
     * @param weis weis paid for purchase
     * @param tokens amount of tokens purchased, not including any bonus
     */
     event TokensPurchased (
         address indexed purchaser,
-        address indexed referrer,
+        address indexed referSender,
         uint256 weis,
         uint256 tokens
     );
 
     event RateChanged (uint256 rate);
     event HardCapChanged (uint256 cap);
-    event ReferralBonusPercentageChanged (uint256 percentage);
-    event ReferredBonusPercentageChanged (uint256 percentage);
+    event ReferSenderBonusPercentageChanged (uint256 percentage);
+    event ReferReceiverBonusPercentageChanged (uint256 percentage);
 
     modifier onlyWhileOpen {
-        require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is finished.");
+        require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is not opened.");
         _;
     }
 
@@ -113,7 +113,7 @@ contract Crowdsale is Claimable {
         purchaseTokens(address(0));
     }
 
-    function purchaseTokens (address _referredBy) public payable onlyWhileOpen {
+    function purchaseTokens (address _referSender) public payable onlyWhileOpen {
         // Check if hard cap has been reached.
         require(totalWeiRaised < hardCap, "Hard cap has been reached.");
 
@@ -129,26 +129,26 @@ contract Crowdsale is Claimable {
         // Check if buying enough tokens
         require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
-        bool isValidReferrer = (_referredBy != address(0))
-            && isPioneer[_referredBy]
-            && (_referredBy != msg.sender);
+        bool isValidReferSender = (_referSender != address(0))
+            && isPioneer[_referSender]
+            && (_referSender != msg.sender);
 
         // update token balances
-        if (isValidReferrer) {
-            uint256 _referredTokens = _tokensPurchased.mul(referredBonusPercentage).div(100);
-            uint256 _referralTokens = _tokensPurchased.mul(referralBonusPercentage).div(100);
+        if (isValidReferSender) {
+            uint256 _referSenderTokens = _tokensPurchased.mul(referSenderBonusPercentage).div(100);
+            uint256 _referReceiverTokens = _tokensPurchased.mul(referReceiverBonusPercentage).div(100);
 
             tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            tokensReferredBonus[msg.sender] = tokensReferredBonus[msg.sender].add(_referredTokens);
-            tokensReferralBonus[_referredBy] = tokensReferralBonus[_referredBy].add(_referralTokens);
+            tokensReferSenderBonus[_referSender] = tokensReferSenderBonus[_referSender].add(_referSenderTokens);
+            tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
         } else {
             tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            _referredBy = address(0); // means that the referrer is not valid
+            _referSender = address(0); // means that the referSender is not valid
         }
 
         emit TokensPurchased(
             msg.sender,
-            _referredBy,
+            _referSender,
             _weiPaid,
             _tokensPurchased
         );
@@ -219,8 +219,8 @@ contract Crowdsale is Claimable {
     function balanceOf(address _user) public view returns (uint256 _balance) {
         return (
             tokensPurchased[_user]
-            + tokensReferralBonus[_user]
-            + tokensReferredBonus[_user]
+            + tokensReferSenderBonus[_user]
+            + tokensReferReceiverBonus[_user]
             + calcPioneerBonus(_user)
         );
     }
@@ -243,14 +243,14 @@ contract Crowdsale is Claimable {
         emit HardCapChanged(_hardCap);
     }
 
-    function setReferralBonusPercentage (uint256 _percentage) public onlyOwner {
-        referralBonusPercentage = _percentage;
-        emit ReferralBonusPercentageChanged(_percentage);
+    function setReferSenderBonusPercentage (uint256 _percentage) public onlyOwner {
+        referSenderBonusPercentage = _percentage;
+        emit ReferSenderBonusPercentageChanged(_percentage);
     }
 
-    function setReferredBonusPercentage (uint256 _percentage) public onlyOwner {
-        referredBonusPercentage = _percentage;
-        emit ReferredBonusPercentageChanged(_percentage);
+    function setReferReceiverBonusPercentage (uint256 _percentage) public onlyOwner {
+        referReceiverBonusPercentage = _percentage;
+        emit ReferReceiverBonusPercentageChanged(_percentage);
     }
 
     function setOpeningTime (uint256 _time) public onlyOwner {
