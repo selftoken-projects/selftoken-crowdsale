@@ -28,6 +28,9 @@ contract Crowdsale is Ownable {
     uint minPurchaseWei = 0.1 ether;
 
     uint256 public hardTop; // how many eth can be recieved in this contract
+    mapping(address=>uint) tokenBalances;  // Dummy balances ledger for user
+ 
+
 
     constructor (address tokenContractAddr, address _account, uint price, uint _openingTime, uint _closingTime) public {
         tokenContract = ERC20(tokenContractAddr);
@@ -89,10 +92,11 @@ contract Crowdsale is Ownable {
         uint totalToken = validReferer ? base.add(bonus).add(bonus) : base.add(bonus);
         require(salableTokenAmount() >= totalToken);
 
-        tokenContract.transferFrom(account, msg.sender, base.add(bonus));
-        
         if (validReferer) {
-            tokenContract.transferFrom(account, referer, bonus);
+            tokenBalances[msg.sender] = tokenBalances[msg.sender].add(base);
+            tokenBalances[referer] = tokenBalances[referer].add(base);
+        } else {
+            tokenBalances[msg.sender] = tokenBalances[msg.sender].add(base.add(bonus));
         }
     }
 
