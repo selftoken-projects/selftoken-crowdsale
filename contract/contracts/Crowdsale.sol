@@ -150,12 +150,14 @@ contract Crowdsale is Claimable {
             _tokensPurchased
         );
 
+        // must get currentStage before totalWeiRaised is updated.
+        uint256 _stageIdx = currentStage();
+
         // update wei raised
         weiRaisedFrom[msg.sender] = weiRaisedFrom[msg.sender].add(_weiPaid);
         totalWeiRaised = totalWeiRaised.add(_weiPaid);
 
         // update pioneer bonus weight
-        uint256 _stageIdx = currentStage();
         uint256 _increasedPioneerWeight = 0;
         // if the sender has been a pioneer
         if (isPioneer[msg.sender]) {
@@ -164,19 +166,17 @@ contract Crowdsale is Claimable {
         // if the sender was not a pioneer
         else {
             // During the time that users can become pioneers.
-            if (block.timestamp <= pioneerTimeEnd
-            // sender has paid >= pioneerWeiThreshold
-            && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
+            // And (total amount of ETH the sender has paid) >= pioneerWeiThreshold
+            if (block.timestamp <= pioneerTimeEnd && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
                 // the sender becomes a pioneer
                 isPioneer[msg.sender] = true;
                 _increasedPioneerWeight = weiRaisedFrom[msg.sender];
             }
         }
 
-        if (_increasedPioneerWeight != 0) {
-            // add _increasedPioneerWeight to pioneerWeightOfUserInStage
+        // update pioneer weight if necessary
+        if (_increasedPioneerWeight > 0) {
             pioneerWeightOfUserInStage[msg.sender][_stageIdx] = pioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_increasedPioneerWeight);
-            // add _increasedPioneerWeight to totalPioneerWeightInStage
             totalPioneerWeightInStage[_stageIdx] = totalPioneerWeightInStage[_stageIdx].add(_increasedPioneerWeight);
         }
 
