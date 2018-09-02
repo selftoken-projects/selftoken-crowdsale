@@ -8,7 +8,7 @@ Doc:
 https://docs.google.com/document/d/1Fe5MQ0NLFEhHXhliSfrTid194W1rqSQzx1e-kjpeoLQ/edit#
 */
 contract Crowdsale is Claimable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     // -----------------------------------------
     // configs
@@ -25,23 +25,23 @@ contract Crowdsale is Claimable {
     /// @notice The min total amount of tokens a user have to buy.
     /// Not the minimum amount of tokens purchased in each transaction.
     /// A user can buy 200 tokens and then buy 100 tokens.
-    uint public minTokensPurchased = 200 ether; // 200 tokens
-    uint public hardCap = 10000 ether; // hard cap
+    uint256 public minTokensPurchased = 200 ether; // 200 tokens
+    uint256 public hardCap = 10000 ether; // hard cap
 
     // TODO: change to better name
-    uint public referralBonusPercentage = 5; // 5%. both referrer's bonus
-    uint public referredBonusPercentage = 5; // 5%. referred purchaser's bonus
+    uint256 public referSenderBonusPercentage = 5; // 5%. inviter's bonus
+    uint256 public referReceiverBonusPercentage = 5; // 5%. purchaser's bonus
 
     // airdrop 45000 tokens to pioneers whenever 1000 ETH is raised.
     // until 10000 ETH is reached (or 10 stages)
-    uint public pioneerBonusPerStage = 45000 ether; // 45000 tokens
-    uint public weiRaisedPerStage = 1000 ether; // 1000 ETH
-    uint public maxStages = 10;
+    uint256 public pioneerBonusPerStage = 45000 ether; // 45000 tokens
+    uint256 public weiRaisedPerStage = 1000 ether; // 1000 ETH
+    uint256 public maxStages = 10;
 
     /// @notice After this moment, users are not becoming pioneers anymore.
-    uint public pioneerTimeEnd; // 2018/9/17 24:00 (UTC+8)
+    uint256 public pioneerTimeEnd; // 2018/9/17 24:00 (UTC+8)
 
-    uint public pioneerWeiThreshold = 1 ether;
+    uint256 public pioneerWeiThreshold = 1 ether;
 
     // -----------------------------------------
     // states
@@ -51,24 +51,24 @@ contract Crowdsale is Claimable {
     uint256 public totalWeiRaised;
 
     /// weiRaisedFrom[_userAddress]
-    mapping(address => uint) public weiRaisedFrom;
+    mapping(address => uint256) public weiRaisedFrom;
 
     /// @dev isPioneer[_userAddress]
     mapping(address => bool) public isPioneer;
 
     /// @dev pioneerWeightOfUserInStage[_userAddress][_stageIdx]
-    mapping(address => mapping(uint => uint)) public pioneerWeightOfUserInStage;
+    mapping(address => mapping(uint256 => uint256)) public pioneerWeightOfUserInStage;
 
     /// @notice total increased pioneer weight in stage
     /// @dev totalPioneerWeightInStage[_stageIdx]
-    mapping(uint => uint) public totalPioneerWeightInStage;
+    mapping(uint256 => uint256) public totalPioneerWeightInStage;
 
-    // including purchased tokens and referred bonus
-    mapping(address => uint) public tokensPurchased;
+    // not including any bonus
+    mapping(address => uint256) public tokensPurchased;
 
-    mapping(address => uint) public tokensReferralBonus;
+    mapping(address => uint256) public tokensReferSenderBonus;
 
-    mapping(address => uint) public tokensReferredBonus;
+    mapping(address => uint256) public tokensReferReceiverBonus;
 
     // -----------------------------------------
     // events
@@ -77,28 +77,28 @@ contract Crowdsale is Claimable {
     /**
     * Event for token purchase logging
     * @param purchaser who paid for the tokens
-    * @param referrer who referred the purchaser. address(0) if not valid referrer
+    * @param referSender who invited the purchaser. address(0) if not valid referSender
     * @param weis weis paid for purchase
     * @param tokens amount of tokens purchased, not including any bonus
     */
     event TokensPurchased (
         address indexed purchaser,
-        address indexed referrer,
+        address indexed referSender,
         uint256 weis,
         uint256 tokens
     );
 
     event RateChanged (uint256 rate);
     event HardCapChanged (uint256 cap);
-    event ReferralBonusPercentageChanged (uint256 percentage);
-    event ReferredBonusPercentageChanged (uint256 percentage);
+    event ReferSenderBonusPercentageChanged (uint256 percentage);
+    event ReferReceiverBonusPercentageChanged (uint256 percentage);
 
     modifier onlyWhileOpen {
-        require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is finished.");
+        require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is not opened.");
         _;
     }
 
-    constructor (uint _openingTime, uint _closingTime, uint _pioneerTimeEnd) public {
+    constructor (uint256 _openingTime, uint256 _closingTime, uint256 _pioneerTimeEnd) public {
         openingTime = _openingTime;
         closingTime = _closingTime;
         pioneerTimeEnd = _pioneerTimeEnd;
@@ -113,42 +113,42 @@ contract Crowdsale is Claimable {
         purchaseTokens(address(0));
     }
 
-    function purchaseTokens (address _referredBy) public payable onlyWhileOpen {
+    function purchaseTokens (address _referSender) public payable onlyWhileOpen {
         // Check if hard cap has been reached.
         require(totalWeiRaised < hardCap, "Hard cap has been reached.");
 
-        uint _weiPaid = msg.value;
+        uint256 _weiPaid = msg.value;
 
         // If hard cap is reached in this tx, pay as much ETH as possible
         if (totalWeiRaised.add(_weiPaid) > hardCap) {
             _weiPaid = hardCap.sub(totalWeiRaised);
         }
 
-        uint _tokensPurchased = _weiPaid.mul(rate);
+        uint256 _tokensPurchased = _weiPaid.mul(rate);
 
         // Check if buying enough tokens
         require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
-        bool isValidReferrer = (_referredBy != address(0))
-            && isPioneer[_referredBy]
-            && (_referredBy != msg.sender);
+        bool isValidReferSender = (_referSender != address(0))
+            && isPioneer[_referSender]
+            && (_referSender != msg.sender);
 
         // update token balances
-        if (isValidReferrer) {
-            uint _referredTokens = _tokensPurchased.mul(referredBonusPercentage).div(100);
-            uint _referralTokens = _tokensPurchased.mul(referralBonusPercentage).div(100);
+        if (isValidReferSender) {
+            uint256 _referSenderTokens = _tokensPurchased.mul(referSenderBonusPercentage).div(100);
+            uint256 _referReceiverTokens = _tokensPurchased.mul(referReceiverBonusPercentage).div(100);
 
             tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            tokensReferredBonus[msg.sender] = tokensReferredBonus[msg.sender].add(_referredTokens);
-            tokensReferralBonus[_referredBy] = tokensReferralBonus[_referredBy].add(_referralTokens);
+            tokensReferSenderBonus[_referSender] = tokensReferSenderBonus[_referSender].add(_referSenderTokens);
+            tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
         } else {
             tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            _referredBy = address(0); // means that the referrer is not valid
+            _referSender = address(0); // means that the referSender is not valid
         }
 
         emit TokensPurchased(
             msg.sender,
-            _referredBy,
+            _referSender,
             _weiPaid,
             _tokensPurchased
         );
@@ -158,8 +158,8 @@ contract Crowdsale is Claimable {
         totalWeiRaised = totalWeiRaised.add(_weiPaid);
 
         // update pioneer bonus weight
-        uint _stageIdx = currentStage();
-        uint _increasedPioneerWeight = 0;
+        uint256 _stageIdx = currentStage();
+        uint256 _increasedPioneerWeight = 0;
         // if the sender has been a pioneer
         if (isPioneer[msg.sender]) {
             _increasedPioneerWeight = _weiPaid;
@@ -194,17 +194,17 @@ contract Crowdsale is Claimable {
     // -----------------------------------------
 
     // equals to completed stage
-    function currentStage() public view returns (uint _stageIdx) {
+    function currentStage() public view returns (uint256 _stageIdx) {
         _stageIdx = totalWeiRaised.div(weiRaisedPerStage);
         return (_stageIdx >= maxStages) ? maxStages : _stageIdx;
     }
 
     /// @return amount of pioneer bonus tokens
-    function calcPioneerBonus(address _user) public view returns (uint _tokens) {
-        uint _userWeight = 0;
-        uint _totalWeight = 0;
-        uint _currentStage = currentStage();
-        for (uint _stageIdx = 0; _stageIdx < _currentStage; _stageIdx++) {
+    function calcPioneerBonus(address _user) public view returns (uint256 _tokens) {
+        uint256 _userWeight = 0;
+        uint256 _totalWeight = 0;
+        uint256 _currentStage = currentStage();
+        for (uint256 _stageIdx = 0; _stageIdx < _currentStage; _stageIdx++) {
             _userWeight = _userWeight.add(pioneerWeightOfUserInStage[_user][_stageIdx]);
             _totalWeight = _totalWeight.add(totalPioneerWeightInStage[_stageIdx]);
 
@@ -216,11 +216,11 @@ contract Crowdsale is Claimable {
     }
 
     /// @return token balance of a user
-    function balanceOf(address _user) public view returns (uint _balance) {
+    function balanceOf(address _user) public view returns (uint256 _balance) {
         return (
             tokensPurchased[_user]
-            + tokensReferralBonus[_user]
-            + tokensReferredBonus[_user]
+            + tokensReferSenderBonus[_user]
+            + tokensReferReceiverBonus[_user]
             + calcPioneerBonus(_user)
         );
     }
@@ -229,35 +229,35 @@ contract Crowdsale is Claimable {
     // setters
     // -----------------------------------------
 
-    function setRate (uint _rate) public onlyOwner {
+    function setRate (uint256 _rate) public onlyOwner {
         rate = _rate;
         emit RateChanged(_rate);
     }
 
-    function setMinTokensPurchased (uint _amount) public onlyOwner {
+    function setMinTokensPurchased (uint256 _amount) public onlyOwner {
         minTokensPurchased = _amount;
     }
 
-    function setHardCap (uint _hardCap) public onlyOwner {
+    function setHardCap (uint256 _hardCap) public onlyOwner {
         hardCap = _hardCap;
         emit HardCapChanged(_hardCap);
     }
 
-    function setReferralBonusPercentage (uint _percentage) public onlyOwner {
-        referralBonusPercentage = _percentage;
-        emit ReferralBonusPercentageChanged(_percentage);
+    function setReferSenderBonusPercentage (uint256 _percentage) public onlyOwner {
+        referSenderBonusPercentage = _percentage;
+        emit ReferSenderBonusPercentageChanged(_percentage);
     }
 
-    function setReferredBonusPercentage (uint _percentage) public onlyOwner {
-        referredBonusPercentage = _percentage;
-        emit ReferredBonusPercentageChanged(_percentage);
+    function setReferReceiverBonusPercentage (uint256 _percentage) public onlyOwner {
+        referReceiverBonusPercentage = _percentage;
+        emit ReferReceiverBonusPercentageChanged(_percentage);
     }
 
-    function setOpeningTime (uint _time) public onlyOwner {
+    function setOpeningTime (uint256 _time) public onlyOwner {
         openingTime = _time;
     }
 
-    function setClosingTime (uint _time) public onlyOwner {
+    function setClosingTime (uint256 _time) public onlyOwner {
         closingTime = _time;
     }
 
@@ -265,7 +265,7 @@ contract Crowdsale is Claimable {
     // other owner operation
     // -----------------------------------------
 
-    function withdraw (uint amount) public onlyOwner {
+    function withdraw (uint256 amount) public onlyOwner {
         // TODO: change to fixed address?
         msg.sender.transfer(amount);
     }
