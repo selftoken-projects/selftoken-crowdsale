@@ -21,6 +21,7 @@ contract Crowdsale is Ownable {
     address account; // the account holding the crowdsale tokens
 
     uint priceInWei; // how many weis for one token
+    uint raisedWei; // how many weis has been raised
     uint referalBonusPercentage = 5; // 5%
     uint256 public openingTime;
     uint256 public closingTime;
@@ -35,6 +36,7 @@ contract Crowdsale is Ownable {
         openingTime = _openingTime;
         closingTime = _closingTime;
         hardTop = 10000 ether;
+        raisedWei = 0;
     }
 
     modifier onlyWhileOpen {
@@ -74,7 +76,9 @@ contract Crowdsale is Ownable {
 
     function purchase (address referer) public payable onlyWhileOpen {
 
-        require(address(this).balance + msg.value <= hardTop);
+        raisedWei = raisedWei.add(msg.value);
+        require(raisedWei <= hardTop);
+        
         require(msg.value >= minPurchaseWei);
         
         bool validReferer = tokenContract.balanceOf(referer) > 0;
