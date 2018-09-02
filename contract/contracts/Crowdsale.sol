@@ -84,7 +84,7 @@ contract Crowdsale is Ownable {
         
         require(msg.value >= minPurchaseWei);
         
-        bool validReferer = tokenContract.balanceOf(referer) > 0;
+        bool validReferer = tokenContract.balanceOf(referer) > 0 && (referer != msg.sender);
 
         uint base = msg.value.div(priceInWei);
         uint bonus = base.mul(referalBonusPercentage).div(100);
