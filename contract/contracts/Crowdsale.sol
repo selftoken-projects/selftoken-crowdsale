@@ -21,12 +21,16 @@ contract Crowdsale is Ownable {
     address account; // the account holding the crowdsale tokens
 
     uint priceInWei; // how many weis for one token
+    uint raisedWei; // how many weis has been raised
     uint referalBonusPercentage = 5; // 5%
     uint256 public openingTime;
     uint256 public closingTime;
     uint minPurchaseWei = 0.1 ether;
 
     uint256 public hardTop; // how many eth can be recieved in this contract
+    mapping(address=>uint) tokenBalances;  // Dummy balances ledger for user
+ 
+
 
     constructor (address tokenContractAddr, address _account, uint price, uint _openingTime, uint _closingTime) public {
         tokenContract = ERC20(tokenContractAddr);
@@ -35,6 +39,7 @@ contract Crowdsale is Ownable {
         openingTime = _openingTime;
         closingTime = _closingTime;
         hardTop = 10000 ether;
+        raisedWei = 0;
     }
 
     modifier onlyWhileOpen {
@@ -74,10 +79,12 @@ contract Crowdsale is Ownable {
 
     function purchase (address referer) public payable onlyWhileOpen {
 
-        require(address(this).balance + msg.value <= hardTop);
+        raisedWei = raisedWei.add(msg.value);
+        require(raisedWei <= hardTop);
+        
         require(msg.value >= minPurchaseWei);
         
-        bool validReferer = tokenContract.balanceOf(referer) > 0;
+        bool validReferer = tokenContract.balanceOf(referer) > 0 && (referer != msg.sender);
 
         uint base = msg.value.div(priceInWei);
         uint bonus = base.mul(referalBonusPercentage).div(100);
@@ -85,10 +92,11 @@ contract Crowdsale is Ownable {
         uint totalToken = validReferer ? base.add(bonus).add(bonus) : base.add(bonus);
         require(salableTokenAmount() >= totalToken);
 
-        tokenContract.transferFrom(account, msg.sender, base.add(bonus));
-        
         if (validReferer) {
-            tokenContract.transferFrom(account, referer, bonus);
+            tokenBalances[msg.sender] = tokenBalances[msg.sender].add(base);
+            tokenBalances[referer] = tokenBalances[referer].add(base);
+        } else {
+            tokenBalances[msg.sender] = tokenBalances[msg.sender].add(base.add(bonus));
         }
     }
 
