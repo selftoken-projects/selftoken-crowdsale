@@ -205,9 +205,11 @@ contract Crowdsale is Claimable {
             _userWeight = _userWeight.add(pioneerWeightOfUserInStage[_user][_stageIdx]);
             _totalWeight = _totalWeight.add(totalPioneerWeightInStage[_stageIdx]);
 
-            _tokens = _tokens.add(
-                pioneerBonusPerStage.mul(_userWeight).div(_totalWeight)
-            );
+            if (_totalWeight > 0) {
+                _tokens = _tokens.add(
+                    pioneerBonusPerStage.mul(_userWeight).div(_totalWeight)
+                );
+            }
         }
         return _tokens;
     }
