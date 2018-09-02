@@ -265,15 +265,16 @@ contract Crowdsale is Claimable {
         pioneerBonusPerStage = _tokenAmount;
     }
 
-    function setWeiRaisedPerStage (uint256 _wei) public onlyOwner {
-        weiRaisedPerStage = _wei;
-    }
-
-    function setMaxStages (uint256 _value) public onlyOwner {
-        maxStages = _value;
+    function setMaxStages (uint256 _maxStages) public onlyOwner {
+        uint _currentStage = currentStage();
+        require(_currentStage < maxStages);
+        require(_currentStage < _maxStages);
+        maxStages = _maxStages;
     }
 
     function setPioneerTimeEnd (uint256 _time) public onlyOwner {
+        require(block.timestamp < pioneerTimeEnd);
+        require(block.timestamp < _time);
         pioneerTimeEnd = _time;
     }
 
