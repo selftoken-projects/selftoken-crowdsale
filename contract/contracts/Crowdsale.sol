@@ -1,13 +1,13 @@
 pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/ownership/Claimable.sol";
 
 /*
 Doc:
 https://docs.google.com/document/d/1Fe5MQ0NLFEhHXhliSfrTid194W1rqSQzx1e-kjpeoLQ/edit#
 */
-contract Crowdsale is Ownable {
+contract Crowdsale is Claimable {
     using SafeMath for uint;
 
     // -----------------------------------------
@@ -18,6 +18,7 @@ contract Crowdsale is Ownable {
     // If ERC20 decimals = 18, then a token unit is (10 ** (-18)) token
     uint256 public rate = 3600;
 
+    // TODO: delete openingTime?
     uint256 public openingTime; // 2018/9/3 12:00 (UTC+8)
     uint256 public closingTime; // 2018/10/31 24:00 (UTC+8)
 
@@ -27,6 +28,7 @@ contract Crowdsale is Ownable {
     uint public minTokensPurchased = 200 ether; // 200 tokens
     uint public hardCap = 10000 ether; // hard cap
 
+    // TODO: change to better name
     uint public referralBonusPercentage = 5; // 5%. both referrer's bonus
     uint public referredBonusPercentage = 5; // 5%. referred purchaser's bonus
 
@@ -34,7 +36,7 @@ contract Crowdsale is Ownable {
     // until 10000 ETH is reached (or 10 stages)
     uint public pioneerBonusPerStage = 45000 ether; // 45000 tokens
     uint public weiRaisedPerStage = 1000 ether; // 1000 ETH
-    uint public totalStages = 10;
+    uint public maxStages = 10;
 
     /// @notice After this moment, users are not becoming pioneers anymore.
     uint public pioneerTimeEnd; // 2018/9/17 24:00 (UTC+8)
@@ -46,7 +48,7 @@ contract Crowdsale is Ownable {
     // -----------------------------------------
 
     /// total received wei
-    uint256 public weiRaised;
+    uint256 public totalWeiRaised;
 
     /// weiRaisedFrom[_userAddress]
     mapping(address => uint) public weiRaisedFrom;
@@ -54,12 +56,12 @@ contract Crowdsale is Ownable {
     /// @dev isPioneer[_userAddress]
     mapping(address => bool) public isPioneer;
 
-    /// @dev increasedPioneerWeightOfUserInStage[_userAddress][_stageIdx]
-    mapping(address => mapping(uint => uint)) public increasedPioneerWeightOfUserInStage;
+    /// @dev pioneerWeightOfUserInStage[_userAddress][_stageIdx]
+    mapping(address => mapping(uint => uint)) public pioneerWeightOfUserInStage;
 
     /// @notice total increased pioneer weight in stage
-    /// @dev increasedPioneerWeightInStage[_stageIdx]
-    mapping(uint => uint) public increasedPioneerWeightInStage;
+    /// @dev totalPioneerWeightInStage[_stageIdx]
+    mapping(uint => uint) public totalPioneerWeightInStage;
 
     // including purchased tokens and referred bonus
     mapping(address => uint) public tokensPurchased;
@@ -92,7 +94,7 @@ contract Crowdsale is Ownable {
     event ReferredBonusPercentageChanged (uint256 percentage);
 
     modifier onlyWhileOpen {
-        require(block.timestamp >= openingTime && block.timestamp <= closingTime);
+        require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is finished.");
         _;
     }
 
@@ -105,66 +107,61 @@ contract Crowdsale is Ownable {
     // Crowdsale external interface
     // -----------------------------------------
 
+    // TODO: check if there's any possibility that address(0) can be a pioneer.
     function () external payable onlyWhileOpen {
         purchaseTokens(address(0));
     }
 
-    function purchaseTokens (address _referrer) public payable onlyWhileOpen {
+    function purchaseTokens (address _referredBy) public payable onlyWhileOpen {
         // Check if hard cap has been reached.
-        require(weiRaised < hardCap, "Hard cap has been reached.");
+        require(totalWeiRaised < hardCap, "Hard cap has been reached.");
 
         uint _weiPaid = msg.value;
 
         // If hard cap is reached in this tx, pay as much ETH as possible
-        if (weiRaised.add(_weiPaid) > hardCap) {
-            _weiPaid = hardCap.sub(weiRaised);
+        if (totalWeiRaised.add(_weiPaid) > hardCap) {
+            _weiPaid = hardCap.sub(totalWeiRaised);
         }
 
         uint _tokensPurchased = _weiPaid.mul(rate);
 
         // Check if buying enough tokens
-        require(_tokensPurchased >= minTokensPurchased, "Purchasing not enough amount of tokens.");
+        require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
-        bool isValidReferrer = (_referrer != address(0))
-            && (tokensPurchased[_referrer] > 0)
-            && (_referrer != msg.sender);
+        bool isValidReferrer = (_referredBy != address(0))
+            && isPioneer[_referredBy]
+            && (_referredBy != msg.sender);
 
         // update token balances
         if (isValidReferrer) {
-            uint _referralTokens = _tokensPurchased.mul(referralBonusPercentage).div(100);
             uint _referredTokens = _tokensPurchased.mul(referredBonusPercentage).div(100);
+            uint _referralTokens = _tokensPurchased.mul(referralBonusPercentage).div(100);
 
             tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
             tokensReferredBonus[msg.sender] = tokensReferredBonus[msg.sender].add(_referredTokens);
-            tokensReferralBonus[_referrer] = tokensReferralBonus[_referrer].add(_referralTokens);
-
+            tokensReferralBonus[_referredBy] = tokensReferralBonus[_referredBy].add(_referralTokens);
         } else {
             tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            _referrer = address(0); // means that the referrer is not valid
+            _referredBy = address(0); // means that the referrer is not valid
         }
 
         emit TokensPurchased(
             msg.sender,
-            _referrer,
+            _referredBy,
             _weiPaid,
             _tokensPurchased
         );
 
         // update wei raised
         weiRaisedFrom[msg.sender] = weiRaisedFrom[msg.sender].add(_weiPaid);
-        weiRaised = weiRaised.add(_weiPaid);
+        totalWeiRaised = totalWeiRaised.add(_weiPaid);
 
         // update pioneer bonus weight
         uint _stageIdx = currentStage();
+        uint _increasedPioneerWeight = 0;
         // if the sender has been a pioneer
         if (isPioneer[msg.sender]) {
-            // uint _increasedPioneerWeight == _weiPaid;
-
-            // add _increasedPioneerWeight to increasedPioneerWeightOfUserInStage
-            increasedPioneerWeightOfUserInStage[msg.sender][_stageIdx] = increasedPioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_weiPaid);
-
-            // add _increasedPioneerWeight to increasedPioneerWeightInStage
-            increasedPioneerWeightInStage[_stageIdx] = increasedPioneerWeightInStage[_stageIdx].add(_weiPaid);
+            _increasedPioneerWeight = _weiPaid;
         }
         // if the sender was not a pioneer
         else {
@@ -174,19 +171,19 @@ contract Crowdsale is Ownable {
             && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
                 // the sender becomes a pioneer
                 isPioneer[msg.sender] = true;
-
-                // uint _increasedPioneerWeight = weiRaisedFrom[msg.sender];
-
-                // add _increasedPioneerWeight to increasedPioneerWeightOfUserInStage
-                increasedPioneerWeightOfUserInStage[msg.sender][_stageIdx] = increasedPioneerWeightOfUserInStage[msg.sender][_stageIdx].add(weiRaisedFrom[msg.sender]);
-
-                // add _increasedPioneerWeight to increasedPioneerWeightInStage
-                increasedPioneerWeightInStage[_stageIdx] = increasedPioneerWeightInStage[_stageIdx].add(weiRaisedFrom[msg.sender]);
+                _increasedPioneerWeight = weiRaisedFrom[msg.sender];
             }
         }
 
+        if (_increasedPioneerWeight != 0) {
+            // add _increasedPioneerWeight to pioneerWeightOfUserInStage
+            pioneerWeightOfUserInStage[msg.sender][_stageIdx] = pioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_increasedPioneerWeight);
+            // add _increasedPioneerWeight to totalPioneerWeightInStage
+            totalPioneerWeightInStage[_stageIdx] = totalPioneerWeightInStage[_stageIdx].add(_increasedPioneerWeight);
+        }
+
         // pay back unused ETH
-        if (msg.value != _weiPaid) {
+        if (msg.value > _weiPaid) {
             msg.sender.transfer(msg.value.sub(_weiPaid));
         }
     }
@@ -197,8 +194,8 @@ contract Crowdsale is Ownable {
 
     // equals to completed stage
     function currentStage() public view returns (uint _stageIdx) {
-        _stageIdx = weiRaised.div(weiRaisedPerStage);
-        return (_stageIdx >= totalStages) ? totalStages : _stageIdx;
+        _stageIdx = totalWeiRaised.div(weiRaisedPerStage);
+        return (_stageIdx >= maxStages) ? maxStages : _stageIdx;
     }
 
     /// @return amount of pioneer bonus tokens
@@ -207,8 +204,8 @@ contract Crowdsale is Ownable {
         uint _totalWeight = 0;
         uint _currentStage = currentStage();
         for (uint _stageIdx = 0; _stageIdx < _currentStage; _stageIdx++) {
-            _userWeight = _userWeight.add(increasedPioneerWeightOfUserInStage[_user][_stageIdx]);
-            _totalWeight = _totalWeight.add(increasedPioneerWeightInStage[_stageIdx]);
+            _userWeight = _userWeight.add(pioneerWeightOfUserInStage[_user][_stageIdx]);
+            _totalWeight = _totalWeight.add(totalPioneerWeightInStage[_stageIdx]);
 
             _tokens = _tokens.add(
                 pioneerBonusPerStage.mul(_userWeight).div(_totalWeight)
@@ -268,10 +265,12 @@ contract Crowdsale is Ownable {
     // -----------------------------------------
 
     function withdraw (uint amount) public onlyOwner {
+        // TODO: change to fixed address?
         msg.sender.transfer(amount);
     }
 
     function withdrawAll () public onlyOwner {
+        // TODO: change to fixed address?
         msg.sender.transfer(address(this).balance);
     }
 }
