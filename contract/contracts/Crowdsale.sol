@@ -56,10 +56,13 @@ contract Crowdsale is Claimable {
     /// @dev isPioneer[_userAddress]
     mapping(address => bool) public isPioneer;
 
+    /// @notice The pioneer weight a user earns in a specific stage.
+    /// Not the sum of all pioneer weight the user has earned.
     /// @dev pioneerWeightOfUserInStage[_userAddress][_stageIdx]
     mapping(address => mapping(uint256 => uint256)) public pioneerWeightOfUserInStage;
 
-    /// @notice total increased pioneer weight in stage
+    /// @notice The total increased pioneer weight in a specific stage.
+    /// Not the sum of pioneer weight users have earned.
     /// @dev totalPioneerWeightInStage[_stageIdx]
     mapping(uint256 => uint256) public totalPioneerWeightInStage;
 
@@ -234,8 +237,16 @@ contract Crowdsale is Claimable {
         emit RateChanged(_rate);
     }
 
-    function setMinTokensPurchased (uint256 _amount) public onlyOwner {
-        minTokensPurchased = _amount;
+    function setOpeningTime (uint256 _time) public onlyOwner {
+        openingTime = _time;
+    }
+
+    function setClosingTime (uint256 _time) public onlyOwner {
+        closingTime = _time;
+    }
+
+    function setMinTokensPurchased (uint256 _tokenAmount) public onlyOwner {
+        minTokensPurchased = _tokenAmount;
     }
 
     function setHardCap (uint256 _hardCap) public onlyOwner {
@@ -253,12 +264,20 @@ contract Crowdsale is Claimable {
         emit ReferReceiverBonusPercentageChanged(_percentage);
     }
 
-    function setOpeningTime (uint256 _time) public onlyOwner {
-        openingTime = _time;
+    function setPioneerBonusPerStage (uint256 _tokenAmount) public onlyOwner {
+        pioneerBonusPerStage = _tokenAmount;
     }
 
-    function setClosingTime (uint256 _time) public onlyOwner {
-        closingTime = _time;
+    function setWeiRaisedPerStage (uint256 _wei) public onlyOwner {
+        weiRaisedPerStage = _wei;
+    }
+
+    function setMaxStages (uint256 _value) public onlyOwner {
+        maxStages = _value;
+    }
+
+    function setPioneerTimeEnd (uint256 _time) public onlyOwner {
+        pioneerTimeEnd = _time;
     }
 
     // -----------------------------------------
