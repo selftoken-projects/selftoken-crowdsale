@@ -1,18 +1,11 @@
 pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 /*
 Doc:
 https://docs.google.com/document/d/1Fe5MQ0NLFEhHXhliSfrTid194W1rqSQzx1e-kjpeoLQ/edit#
-
-Prerequisites:
-1. An ERC20 contract is deployed
-2. An account A is granted at least the salable tokens
-3. The Crowdsale contract is deployed at address C
-4. The account A approve()s C of the salable amount
 */
 contract Crowdsale is Ownable {
     using SafeMath for uint;
