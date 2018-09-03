@@ -202,12 +202,16 @@ contract('Crowdsale', function (accounts) {
             _newHardCap.should.be.bignumber.equal( newHardCap );
         });
 
-        it("should be able to buy tokens when paying more than hardCap", async function () {
+        it("should be able to buy tokens and be refunded the extra amount when paying more than hardCap", async function () {
             let _hardCap = await crowdsale.hardCap();
-
+            let _totalWeiRaised = await crowdsale.totalWeiRaised();
             let _weis = _hardCap.plus(ether(10));
 
+            let originalBalance = web3.eth.getBalance(buyer1);
             await crowdsale.purchaseTokens(anyone, {from: buyer1, value: _weis}).should.be.fulfilled;
+            let postPurchaseBalance = web3.eth.getBalance(buyer1);
+
+            postPurchaseBalance.should.be.bignumber.equal(originalBalance.minus(_hardCap.minus(_totalWeiRaised)));
 
             // should only buy up to hardCap when paying more than that
             (await crowdsale.weiRaisedFrom(buyer1))
