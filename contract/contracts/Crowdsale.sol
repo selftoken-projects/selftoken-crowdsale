@@ -311,7 +311,8 @@ contract Crowdsale is Claimable, Pausable {
 
     function withdrawAll () public onlyOwner {
         // TODO: change to fixed address?
+        uint totalBalance = address(this).balance;
         msg.sender.transfer(address(this).balance);
-        emit Withdraw(address(this).balance);
+        emit Withdraw(totalBalance);
     }
 }

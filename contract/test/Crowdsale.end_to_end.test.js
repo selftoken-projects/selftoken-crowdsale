@@ -141,5 +141,34 @@ contract('Crowdsale', function (accounts) {
         // check totalTokens
         (await crowdsale.totalSupply()).should.be.bignumber.equal( totalTokens );
     });
+
+    // it("owner pause the crowdsale", async function(){
+
+    // });
+
+    it("Reach hardcap", async function () {
+
+        // calculate remaining balance to reach hard cap
+        let _totalWeiRaised = await crowdsale.totalWeiRaised();
+        let remainWeiToHardcap = hardCap - _totalWeiRaised;
+
+        // buyer1 purchase that amount
+        let amountToBuyWei = remainWeiToHardcap;
+        // no referrer this time 
+        await crowdsale.purchaseTokens(0, {from: buyer1, value: amountToBuyWei});
+
+        // Enter stage 10, hard cap reached
+        (await crowdsale.currentStage()).should.be.bignumber.equal( 10 );
+
+        // buyer2 cannot purchase any token after hardcap is reached
+        await assertRevert(crowdsale.purchaseTokens(0, {from: buyer2, value: 10})); 
+
+        // owner withdraw all balances
+        let result = await crowdsale.withdrawAll();
+
+        // check event 
+        assert.equal(result.logs[0].event, "Withdraw");
+        assert.equal(result.logs[0].args.amount.valueOf(), hardCap);
+    });
 });
 
