@@ -7,7 +7,7 @@ let someone;
 let buyer1; 
 
 before(async () => {
-    // open and end time is not real case here 
+    // open and end time is not real case here, so we are not testing onlyWhileOpen here
     var openingTime = Date.now();
     var closingTime = openingTime + 5*60; // 5 mins after opening time 
     var pioneerTimeEnd = closingTime;
@@ -57,6 +57,20 @@ contract('CrowdSale', function (accounts) {
         await assertRevert(crowdSale.setRate(rate, {from: someone}), "rate should only be set by owner"); 
 
         //TODO: add other setter tests
+    });
+
+    it("test withdraw", async function () {
+        var withdrawAmount = 0;
+        var result = await crowdSale.withdraw(withdrawAmount);
+
+        // TODO: get total contract balance first
+        withdrawAmount = 10;
+        await assertRevert(crowdSale.withdraw(withdrawAmount), "cannot withdraw money that exceeds total contract balance"); 
+
+        // check event emit
+
+        // check someone other than owner 
+        await assertRevert(crowdSale.withdraw(withdrawAmount, {from: someone}), "only owner should be able to withdraw"); 
     });
 });
   
