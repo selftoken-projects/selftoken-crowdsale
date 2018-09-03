@@ -1,4 +1,4 @@
-var assertRevert = require('./helper/assertRevert').assertRevert;
+const { assertRevert } = require("./helper/assertRevert");
 const CrowdSale = artifacts.require("CrowdSale");
 
 let crowdSale;
@@ -71,6 +71,23 @@ contract('CrowdSale', function (accounts) {
 
         // check someone other than owner 
         await assertRevert(crowdSale.withdraw(withdrawAmount, {from: someone}), "only owner should be able to withdraw"); 
+    });
+
+    it("test pause", async function (){
+        var paused = await crowdSale.paused();
+        assert.equal(paused, false, "pause should be set to false initially");
+
+        // owner pause the crowdsale
+        var result = await crowdSale.pause();
+        assert.equal(result.logs[0].event, "Pause");
+        paused = await crowdSale.paused();
+        assert.equal(paused, true, "pause should be set to true when paused");
+
+        // owner unpause
+        result = await crowdSale.unpause();
+        assert.equal(result.logs[0].event, "Unpause");
+        paused = await crowdSale.paused();
+        assert.equal(paused, false, "pause should be set to false when unpaused");
     });
 });
   

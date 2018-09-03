@@ -2,12 +2,13 @@ pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Claimable.sol";
+import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 /*
 Doc:
 https://docs.google.com/document/d/1Fe5MQ0NLFEhHXhliSfrTid194W1rqSQzx1e-kjpeoLQ/edit#
 */
-contract Crowdsale is Claimable {
+contract Crowdsale is Claimable, Pausable {
     using SafeMath for uint256;
 
     // -----------------------------------------
