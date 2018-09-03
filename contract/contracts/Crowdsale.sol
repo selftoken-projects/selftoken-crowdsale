@@ -71,6 +71,9 @@ contract Crowdsale is Claimable {
 
     mapping(address => uint256) public tokensReferReceiverBonus;
 
+    uint256 totalTokensPurchased;
+    uint256 totalTokensAsReferralBonus; // tokens
+
     // -----------------------------------------
     // events
     // -----------------------------------------
@@ -114,6 +117,8 @@ contract Crowdsale is Claimable {
     }
 
     function purchaseTokens (address _referSender) public payable onlyWhileOpen {
+        require(msg.value > 0, "Must pay some ether.");
+
         // Check if hard cap has been reached.
         require(totalWeiRaised < hardCap, "Hard cap has been reached.");
 
@@ -140,8 +145,10 @@ contract Crowdsale is Claimable {
 
             tokensReferSenderBonus[_referSender] = tokensReferSenderBonus[_referSender].add(_referSenderTokens);
             tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
+            totalTokensAsReferralBonus = totalTokensAsReferralBonus.add(_referSenderTokens).add(_referReceiverTokens);
         }
         tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
+        totalTokensPurchased = totalTokensPurchased.add(_tokensPurchased);
 
         emit TokensPurchased(
             msg.sender,
@@ -218,9 +225,18 @@ contract Crowdsale is Claimable {
     function balanceOf(address _user) public view returns (uint256 _balance) {
         return (
             tokensPurchased[_user]
-            + tokensReferSenderBonus[_user]
-            + tokensReferReceiverBonus[_user]
-            + calcPioneerBonus(_user)
+            .add(tokensReferSenderBonus[_user])
+            .add(tokensReferReceiverBonus[_user])
+            .add(calcPioneerBonus(_user))
+        );
+    }
+
+    /// @return amount of released tokens
+    function totalSupply() public view returns (uint256 _totalSupply) {
+        return (
+            totalTokensPurchased
+            .add(totalTokensAsReferralBonus)
+            .add(pioneerBonusPerStage.mul(currentStage()))
         );
     }
 
