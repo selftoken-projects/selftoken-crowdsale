@@ -61,7 +61,7 @@ contract('Crowdsale', function (accounts) {
 
         // buyer1 refers buyer2 to buy
         amountToBuyWei = ether(0.1); // some random amount 
-        await crowdsale.purchaseTokens(buyer1, {from: buyer2, value: amountToBuyWei});
+        let result = await crowdsale.purchaseTokens(buyer1, {from: buyer2, value: amountToBuyWei});
 
         // update totalTokens
         tokens = amountToBuyWei.times(rate);
@@ -116,6 +116,30 @@ contract('Crowdsale', function (accounts) {
         (await crowdsale.totalSupply()).should.be.bignumber.equal( totalTokens );
     });
 
+    it("Enter crowdsale next stage", async function () {
 
+        // Initial Stage
+        (await crowdsale.currentStage()).should.be.bignumber.equal( 0 );
+
+        // calculate remaining balance to reach next stage
+        let _totalWeiRaised = await crowdsale.totalWeiRaised();
+        let remainWeiToNextStage = weiRaisedPerStage.minus(_totalWeiRaised);
+
+        // buyer1 purchase that amount
+        let amountToBuyWei = remainWeiToNextStage;
+        // no referrer this time 
+        await crowdsale.purchaseTokens(0, {from: buyer1, value: amountToBuyWei});
+
+        // Enter next stage
+        (await crowdsale.currentStage()).should.be.bignumber.equal( 1 );
+
+        // update totalTokens
+        tokens = amountToBuyWei.times(rate);
+        // calculate pioneer bonus by stage 
+        totalTokens = totalTokens.plus(tokens).plus(pioneerBonusPerStage.times(1));
+
+        // check totalTokens
+        (await crowdsale.totalSupply()).should.be.bignumber.equal( totalTokens );
+    });
 });
 
