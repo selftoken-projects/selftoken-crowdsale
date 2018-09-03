@@ -44,6 +44,9 @@ contract('Crowdsale', function (accounts) {
             crowdsale = await Crowdsale.new(openingTime, closingTime, pioneerTimeEnd);
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+        */
         it("should be a pioneer after paying >= pioneerWeiThreshold", async function () {
             totalTokens = pioneerWeiThreshold.times(rate);
 
@@ -51,6 +54,11 @@ contract('Crowdsale', function (accounts) {
             assert.equal(await crowdsale.isPioneer(buyer1), true);
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: pioneerWeiThreshold * rate
+         * - buyer1 (pioneer): pioneerWeiThreshold * rate
+        */
         it("should not be able to refer self", async function () {
             weis = pioneerWeiThreshold;
             tokens = weis.times(rate);
@@ -65,36 +73,46 @@ contract('Crowdsale', function (accounts) {
             _totalSupply.should.be.bignumber.equal( pioneerWeiThreshold.times(rate).times(2) );
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: pioneerWeiThreshold * rate * 2
+         * - buyer1 (pioneer): pioneerWeiThreshold * rate * 2
+        */
         it("should buyer2 get referral bonus", async function () {
             weis = ether(0.1);
             tokens = weis.times(rate);
             let _referSenderBonus = tokens.times(referSenderBonusPercentage).dividedToIntegerBy(100);
             let _referReceiverBonus = tokens.times(referReceiverBonusPercentage).dividedToIntegerBy(100);
             totalTokens = totalTokens.plus(tokens).plus(_referSenderBonus).plus(_referReceiverBonus);
+            let _buyer1Balance = await crowdsale.balanceOf(buyer1);
 
             await crowdsale.purchaseTokens(buyer1, {from: buyer2, value: weis});
 
             (await crowdsale.tokensPurchased(buyer2))
             .should.be.bignumber.equal( tokens );
-            // console.log(tokens.toString());
 
             (await crowdsale.tokensReferSenderBonus(buyer1))
             .should.be.bignumber.equal( _referSenderBonus );
-            // console.log(_referSenderBonus.toString());
 
             (await crowdsale.tokensReferReceiverBonus(buyer2))
             .should.be.bignumber.equal( _referReceiverBonus );
-            // console.log(_referReceiverBonus.toString());
 
             (await crowdsale.balanceOf(buyer2))
             .should.be.bignumber.equal( tokens.plus(_referReceiverBonus) );
-            // console.log( tokens.plus(_referReceiverBonus).toString() );
+
+            (await crowdsale.balanceOf(buyer1))
+            .should.be.bignumber.equal( _buyer1Balance.plus(_referSenderBonus) );
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: pioneerWeiThreshold * rate * 2 + _referSenderBonus + _referReceiverBonus
+         * - buyer1 (pioneer): pioneerWeiThreshold * rate * 2 + _referSenderBonus
+         * - buyer2: 0.1 eth + _referReceiverBonus
+        */
         it("should update totalSupply", async function () {
             (await crowdsale.totalSupply())
             .should.be.bignumber.equal( totalTokens );
-            // console.log(totalTokens);
         });
 
     });
