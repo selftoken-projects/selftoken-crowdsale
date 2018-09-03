@@ -72,7 +72,7 @@ contract Crowdsale is Claimable {
     mapping(address => uint256) public tokensReferReceiverBonus;
 
     uint256 totalTokensPurchased;
-    uint256 totalTokensAsReferralBonus; // tokens
+    uint256 totalTokensAsReferralBonus; // including tokensReferSenderBonus & tokensReferReceiverBonus
 
     // -----------------------------------------
     // events
