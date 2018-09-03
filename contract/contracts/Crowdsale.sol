@@ -97,6 +97,7 @@ contract Crowdsale is Claimable, Pausable {
     event HardCapChanged (uint256 cap);
     event ReferSenderBonusPercentageChanged (uint256 percentage);
     event ReferReceiverBonusPercentageChanged (uint256 percentage);
+    event Withdraw (uint256 amount);
 
     modifier onlyWhileOpen {
         require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is not opened.");
@@ -300,11 +301,15 @@ contract Crowdsale is Claimable, Pausable {
 
     function withdraw (uint256 amount) public onlyOwner {
         // TODO: change to fixed address?
+        require(amount <= address(this).balance, "withdraw amount exceeds contract balance");
+
         msg.sender.transfer(amount);
+        emit Withdraw(amount);
     }
 
     function withdrawAll () public onlyOwner {
         // TODO: change to fixed address?
         msg.sender.transfer(address(this).balance);
+        emit Withdraw(address(this).balance);
     }
 }
