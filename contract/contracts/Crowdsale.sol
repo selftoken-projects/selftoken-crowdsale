@@ -18,7 +18,6 @@ contract Crowdsale is Claimable {
     // If ERC20 decimals = 18, then a token unit is (10 ** (-18)) token
     uint256 public rate = 3600;
 
-    // TODO: delete openingTime?
     uint256 public openingTime; // 2018/9/3 12:00 (UTC+8)
     uint256 public closingTime; // 2018/10/31 24:00 (UTC+8)
 
@@ -28,7 +27,6 @@ contract Crowdsale is Claimable {
     uint256 public minTokensPurchased = 200 ether; // 200 tokens
     uint256 public hardCap = 10000 ether; // hard cap
 
-    // TODO: change to better name
     uint256 public referSenderBonusPercentage = 5; // 5%. inviter's bonus
     uint256 public referReceiverBonusPercentage = 5; // 5%. purchaser's bonus
 
@@ -111,7 +109,6 @@ contract Crowdsale is Claimable {
     // Crowdsale external interface
     // -----------------------------------------
 
-    // TODO: check if there's any possibility that address(0) can be a pioneer.
     function () external payable onlyWhileOpen {
         purchaseTokens(address(0));
     }
@@ -141,27 +138,26 @@ contract Crowdsale is Claimable {
             uint256 _referSenderTokens = _tokensPurchased.mul(referSenderBonusPercentage).div(100);
             uint256 _referReceiverTokens = _tokensPurchased.mul(referReceiverBonusPercentage).div(100);
 
-            tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
             tokensReferSenderBonus[_referSender] = tokensReferSenderBonus[_referSender].add(_referSenderTokens);
             tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
-        } else {
-            tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-            _referSender = address(0); // means that the referSender is not valid
         }
+        tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
 
         emit TokensPurchased(
             msg.sender,
-            _referSender,
+            (isValidReferSender) ? _referSender : address(0),
             _weiPaid,
             _tokensPurchased
         );
+
+        // must get currentStage before totalWeiRaised is updated.
+        uint256 _stageIdx = currentStage();
 
         // update wei raised
         weiRaisedFrom[msg.sender] = weiRaisedFrom[msg.sender].add(_weiPaid);
         totalWeiRaised = totalWeiRaised.add(_weiPaid);
 
         // update pioneer bonus weight
-        uint256 _stageIdx = currentStage();
         uint256 _increasedPioneerWeight = 0;
         // if the sender has been a pioneer
         if (isPioneer[msg.sender]) {
@@ -170,19 +166,17 @@ contract Crowdsale is Claimable {
         // if the sender was not a pioneer
         else {
             // During the time that users can become pioneers.
-            if (block.timestamp <= pioneerTimeEnd
-            // sender has paid >= pioneerWeiThreshold
-            && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
+            // And (total amount of ETH the sender has paid) >= pioneerWeiThreshold
+            if (block.timestamp <= pioneerTimeEnd && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
                 // the sender becomes a pioneer
                 isPioneer[msg.sender] = true;
                 _increasedPioneerWeight = weiRaisedFrom[msg.sender];
             }
         }
 
-        if (_increasedPioneerWeight != 0) {
-            // add _increasedPioneerWeight to pioneerWeightOfUserInStage
+        // update pioneer weight if necessary
+        if (_increasedPioneerWeight > 0) {
             pioneerWeightOfUserInStage[msg.sender][_stageIdx] = pioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_increasedPioneerWeight);
-            // add _increasedPioneerWeight to totalPioneerWeightInStage
             totalPioneerWeightInStage[_stageIdx] = totalPioneerWeightInStage[_stageIdx].add(_increasedPioneerWeight);
         }
 
@@ -211,9 +205,11 @@ contract Crowdsale is Claimable {
             _userWeight = _userWeight.add(pioneerWeightOfUserInStage[_user][_stageIdx]);
             _totalWeight = _totalWeight.add(totalPioneerWeightInStage[_stageIdx]);
 
-            _tokens = _tokens.add(
-                pioneerBonusPerStage.mul(_userWeight).div(_totalWeight)
-            );
+            if (_totalWeight > 0) {
+                _tokens = _tokens.add(
+                    pioneerBonusPerStage.mul(_userWeight).div(_totalWeight)
+                );
+            }
         }
         return _tokens;
     }
@@ -268,15 +264,16 @@ contract Crowdsale is Claimable {
         pioneerBonusPerStage = _tokenAmount;
     }
 
-    function setWeiRaisedPerStage (uint256 _wei) public onlyOwner {
-        weiRaisedPerStage = _wei;
-    }
-
-    function setMaxStages (uint256 _value) public onlyOwner {
-        maxStages = _value;
+    function setMaxStages (uint256 _maxStages) public onlyOwner {
+        uint _currentStage = currentStage();
+        require(_currentStage < maxStages);
+        require(_currentStage < _maxStages);
+        maxStages = _maxStages;
     }
 
     function setPioneerTimeEnd (uint256 _time) public onlyOwner {
+        require(block.timestamp < pioneerTimeEnd);
+        require(block.timestamp < _time);
         pioneerTimeEnd = _time;
     }
 
