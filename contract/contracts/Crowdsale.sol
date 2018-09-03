@@ -101,6 +101,7 @@ contract Crowdsale is Claimable, Pausable {
 
     modifier onlyWhileOpen {
         require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is not opened.");
+        require(!paused);
         _;
     }
 

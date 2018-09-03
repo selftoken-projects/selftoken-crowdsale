@@ -142,9 +142,20 @@ contract('Crowdsale', function (accounts) {
         (await crowdsale.totalSupply()).should.be.bignumber.equal( totalTokens );
     });
 
-    // it("owner pause the crowdsale", async function(){
+    it("owner pause the crowdsale", async function(){
 
-    // });
+        // owner pause
+        await crowdsale.pause();
+
+        // buyer1 wants to buy when paused -> failed
+        await assertRevert(crowdsale.purchaseTokens(0, {from: buyer1, value: 10}));
+
+        // owner unpause
+        await crowdsale.unpause();
+
+        // buyer1 buys successfully 
+        await crowdsale.purchaseTokens(0, {from: buyer1, value: 10});
+    });
 
     it("Reach hardcap", async function () {
 
