@@ -453,13 +453,9 @@ contract('Crowdsale', function (accounts) {
             let postPurchaseBalance = web3.eth.getBalance(buyer1);
 
             let gasUsed = receipt.receipt.gasUsed;
-            console.log("receipt",receipt.receipt.gasUsed);
 
-            // This line cannot be equal cuz the balance takes the transaction fee into account
             originalBalance.minus(_hardCap).add(_totalWeiRaised).minus(gasUsed*10e10)
             .should.be.bignumber.equal(postPurchaseBalance);
-            
-            
         });
 
         it("check buyer1 weiRaisedFrom update", async function () {
