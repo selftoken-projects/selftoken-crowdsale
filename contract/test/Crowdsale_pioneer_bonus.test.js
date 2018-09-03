@@ -122,10 +122,19 @@ contract('Crowdsale', function (accounts) {
             crowdsale = await Crowdsale.new(openingTime, closingTime, pioneerTimeEnd);
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+        */
         it("should buyer1 be able to pay weiRaisedPerStage * 3", async function () {
             await crowdsale.purchaseTokens(anyone, {from: buyer1, value: weiRaisedPerStage.times(3)});
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: weiRaisedPerStage * rate * 3
+         * - buyer1 (pioneer): weiRaisedPerStage * rate * 3
+         * stage: 3
+        */
         it("should buyer1 get bonus", async function () {
             let _bonus = pioneerBonusPerStage.times(3);
 
@@ -136,10 +145,28 @@ contract('Crowdsale', function (accounts) {
             .should.be.bignumber.equal( _bonus );
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: weiRaisedPerStage * rate * 3
+         * - buyer1 (pioneer): weiRaisedPerStage * rate * 3
+         * stage: 3
+         * bonus designated:
+         * - buyer1 (pioneer): pioneerBonusPerStage * 3
+        */
         it("should buyer2 be able to pay weiRaisedPerStage * 2", async function () {
             await crowdsale.purchaseTokens(anyone, {from: buyer2, value: weiRaisedPerStage.times(2)});
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: weiRaisedPerStage * rate * 3
+         * - buyer1 (pioneer): weiRaisedPerStage * rate * 3
+         * - buyer2 (pioneer): weiRaisedPerStage * rate * 2
+         * stage: 3
+         * bonus designated:
+         * - buyer1 (pioneer): pioneerBonusPerStage * 3 + pioneerBonusPerStage * 3 / 5 * 2
+         * - buyer2 (pioneer): pioneerBonusPerStage * 2 / 5 * 2
+        */
         it("should buyer1 & buyer2 get bonus", async function () {
             let _bonus1 = pioneerBonusPerStage.times(3).plus(
                 pioneerBonusPerStage.times(3).dividedToIntegerBy(5).times(2)
@@ -155,17 +182,57 @@ contract('Crowdsale', function (accounts) {
 
             (await crowdsale.calcPioneerBonus(buyer2))
             .should.be.bignumber.equal( _bonus2 );
+
+            (_bonus1.add(_bonus2))
+            .should.be.bignumber.equal(pioneerBonusPerStage.times(5));
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: weiRaisedPerStage * rate * 3
+         * - buyer1 (pioneer): weiRaisedPerStage * rate * 3
+         * - buyer2 (pioneer): weiRaisedPerStage * rate * 2
+         * stage: 3
+         * bonus designated:
+         * - buyer1 (pioneer): pioneerBonusPerStage * 3 + pioneerBonusPerStage * 3 / 5 * 2
+         * - buyer2 (pioneer): pioneerBonusPerStage * 2 / 5 * 2
+        */
         it("should allow buyer3 be able to pay weiRaisedPerStage * 7", async function () {
             await crowdsale.purchaseTokens(anyone, {from: buyer3, value: weiRaisedPerStage.times(7)});
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: weiRaisedPerStage * rate * 3
+         * - buyer1 (pioneer): weiRaisedPerStage * rate * 3
+         * - buyer2 (pioneer): weiRaisedPerStage * rate * 2
+         * - buyer3 (pioneer): weiRaisedPerStage * rate * 5
+         * stage: 3
+         * bonus designated:
+         * - buyer1 (pioneer): pioneerBonusPerStage * 3 + pioneerBonusPerStage * 3 / 5 * 2 + pioneerBonusPerStage * 3 / 10 * 5
+         * - buyer2 (pioneer): pioneerBonusPerStage * 2 / 5 * 2 + pioneerBonusPerStage * 2 / 10 * 5
+         * - buyer3 (pioneer): pioneerBonusPerStage * 5 / 10 * 5
+        */
         it("should buyer3 only pay weiRaisedPerStage * 5", async function () {
             (await crowdsale.weiRaisedFrom(buyer3))
             .should.be.bignumber.equal( weiRaisedPerStage.times(5) );
+
+            (await crowdsale.totalWeiRaised.call())
+            .should.be.bignumber.equal( weiRaisedPerStage.times(10) );
         });
 
+        /* [Begin State]
+         * crowdsale deployed
+         * token purchased: weiRaisedPerStage * rate * 3
+         * - buyer1 (pioneer): weiRaisedPerStage * rate * 3
+         * - buyer2 (pioneer): weiRaisedPerStage * rate * 2
+         * - buyer3 (pioneer): weiRaisedPerStage * rate * 5
+         * stage: 3
+         * bonus designated:
+         * - buyer1 (pioneer): pioneerBonusPerStage * 3 + pioneerBonusPerStage * 3 / 5 * 2 + pioneerBonusPerStage * 3 / 10 * 5
+         * - buyer2 (pioneer): pioneerBonusPerStage * 2 / 5 * 2 + pioneerBonusPerStage * 2 / 10 * 5
+         * - buyer3 (pioneer): pioneerBonusPerStage * 5 / 10 * 5
+        */
         it("should buyer1 & buyer2 & buyer3 get bonus", async function () {
             let _bonus1 = pioneerBonusPerStage.times(3).plus(
                 pioneerBonusPerStage.times(3).dividedToIntegerBy(5).times(2)
@@ -192,6 +259,9 @@ contract('Crowdsale', function (accounts) {
 
             (await crowdsale.calcPioneerBonus(buyer3))
             .should.be.bignumber.equal( _bonus3 );
+
+            (_bonus1.add(_bonus2).add(_bonus3))
+            .should.be.bignumber.equal(pioneerBonusPerStage.times(10));
         });
     });
 });
