@@ -60,17 +60,19 @@ contract('CrowdSale', function (accounts) {
     });
 
     it("test withdraw", async function () {
-        var withdrawAmount = 0;
-        var result = await crowdSale.withdraw(withdrawAmount);
-
-        // TODO: get total contract balance first
-        withdrawAmount = 10;
-        await assertRevert(crowdSale.withdraw(withdrawAmount), "cannot withdraw money that exceeds total contract balance"); 
+        // withdraw the total amount of contract balance 
+        var contractBalance = web3.eth.getBalance(crowdSale.address);
+        var result = await crowdSale.withdraw(contractBalance);
 
         // check event emit
+        assert.equal(result.logs[0].event, "Withdraw");
+        assert.equal(result.logs[0].args.amount.valueOf(), contractBalance);
+
+        // withdraw money that exceeds total contract balance 
+        await assertRevert(crowdSale.withdraw(contractBalance + 10), "cannot withdraw money that exceeds total contract balance"); 
 
         // check someone other than owner 
-        await assertRevert(crowdSale.withdraw(withdrawAmount, {from: someone}), "only owner should be able to withdraw"); 
+        await assertRevert(crowdSale.withdraw(contractBalance, {from: someone}), "only owner should be able to withdraw"); 
     });
 
     it("test pause", async function (){
