@@ -83,7 +83,8 @@ contract('Crowdsale', function (accounts) {
             tokens = weis.times(rate);
             let _referSenderBonus = tokens.times(referSenderBonusPercentage).dividedToIntegerBy(100);
             let _referReceiverBonus = tokens.times(referReceiverBonusPercentage).dividedToIntegerBy(100);
-            totalTokens = totalTokens.plus(tokens).plus(_referSenderBonus).plus(_referReceiverBonus);
+            // no need to add calcPioneerBonus here cause buyer2 only invest for 0.1 ether, not sufficient to become a pioneer
+            totalTokens = totalTokens.plus(tokens).plus(_referSenderBonus).plus(_referReceiverBonus); 
             let _buyer1Balance = await crowdsale.balanceOf(buyer1);
 
             await crowdsale.purchaseTokens(buyer1, {from: buyer2, value: weis});

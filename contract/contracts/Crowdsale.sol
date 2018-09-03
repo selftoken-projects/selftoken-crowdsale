@@ -207,6 +207,8 @@ contract Crowdsale is Claimable, Pausable {
 
     /// @return amount of pioneer bonus tokens
     function calcPioneerBonus(address _user) public view returns (uint256 _tokens) {
+        if(!isPioneer[_user]) return 0;
+        
         uint256 _userWeight = 0;
         uint256 _totalWeight = 0;
         uint256 _currentStage = currentStage();
