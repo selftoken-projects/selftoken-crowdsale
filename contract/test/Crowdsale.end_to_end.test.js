@@ -46,6 +46,7 @@ contract('Crowdsale', function (accounts) {
 
         // buyer1 purchase token 
         let amountToBuyWei = pioneerWeiThreshold;
+        // buyer2 is not a pioneer
         await crowdsale.purchaseTokens(buyer2, {from: buyer1, value: amountToBuyWei});
 
         // update totalTokens
@@ -54,12 +55,14 @@ contract('Crowdsale', function (accounts) {
 
         // buyer1 becomes pioneer and a qualified referrer (referSender)
         assert.equal(await crowdsale.isPioneer(buyer1), true);
+        // examine buyer2 pioneership
+        assert.equal(await crowdsale.isPioneer(buyer2), false);
 
         // record buyer1, buyer2 original balance 
         let buyer1BalanceOriginal = await crowdsale.balanceOf(buyer1);
         let buyer2BalanceOriginal = await crowdsale.balanceOf(buyer2);
 
-        // buyer1 refers buyer2 to buy
+        // buyer1 (pioneer) refers buyer2 to buy
         amountToBuyWei = ether(0.1); // some random amount 
         let result = await crowdsale.purchaseTokens(buyer1, {from: buyer2, value: amountToBuyWei});
 
@@ -78,6 +81,11 @@ contract('Crowdsale', function (accounts) {
 
         // check totalTokens
         (await crowdsale.totalSupply()).should.be.bignumber.equal( totalTokens );
+
+        // Sum everything up. All balances should be the total supply
+        (buyer1BalanceOriginal.plus(_referSenderBonus)
+        .plus(buyer2BalanceOriginal.plus(tokens).plus(_referReceiverBonus))
+        .should.be.bignumber.equal( totalTokens));
     });
 
     it("buyer3 is not a pioneer but tries to refer buyer2", async function () {
