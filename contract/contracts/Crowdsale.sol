@@ -98,6 +98,7 @@ contract Crowdsale is Claimable, Pausable {
     event ReferSenderBonusPercentageChanged (uint256 percentage);
     event ReferReceiverBonusPercentageChanged (uint256 percentage);
     event Withdraw (uint256 amount);
+    event BecomePioneer (address pioneer);
 
     modifier onlyWhileOpen {
         require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is not opened.");
@@ -120,29 +121,52 @@ contract Crowdsale is Claimable, Pausable {
     }
 
     function purchaseTokens (address _referSender) public payable onlyWhileOpen {
+        uint256 _weiPaid = msg.value;
+        uint256 _tokensPurchased = _weiPaid.mul(rate);
+        uint256 _stageIdx = currentStage(); // calculated by totalWeiRaised
+        uint256 _increasedPioneerWeight = 0; // init 
+        bool becomePioneer = false;
+
         require(msg.value > 0, "Must pay some ether.");
 
         // Check if hard cap has been reached.
         require(totalWeiRaised < hardCap, "Hard cap has been reached.");
 
-        uint256 _weiPaid = msg.value;
-
-        // If hard cap is reached in this tx, pay as much ETH as possible
+        // If hard cap is reached in this tx
         if (totalWeiRaised.add(_weiPaid) > hardCap) {
             _weiPaid = hardCap.sub(totalWeiRaised);
+
+            // update stage
+            _stageIdx = currentStage();
+
+            // pay back unused ETH
+            msg.sender.transfer(msg.value.sub(_weiPaid));
         }
 
-        uint256 _tokensPurchased = _weiPaid.mul(rate);
+        // update after hardcap check 
+        _tokensPurchased = _weiPaid.mul(rate);
+        weiRaisedFrom[msg.sender] = weiRaisedFrom[msg.sender].add(_weiPaid);
+        totalWeiRaised = totalWeiRaised.add(_weiPaid);
 
         // Check if buying enough tokens
         require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
-        bool isValidReferSender = (_referSender != address(0))
-            && isPioneer[_referSender]
-            && (_referSender != msg.sender);
+        // Check if the sender can become a pioneer in this tx
+        // During the time that users can become pioneers.
+        // And (total amount of ETH the sender has paid) >= pioneerWeiThreshold
+        if (block.timestamp <= pioneerTimeEnd && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
+            
+            // the sender becomes a pioneer
+            becomePioneer = true;
+            isPioneer[msg.sender] = true;
+            emit BecomePioneer(msg.sender);
+        }
 
-        // update token balances
-        if (isValidReferSender) {
+        // Check if is valid refer sender (address 0 or is pioneer and not itself)
+        require(_referSender == address(0) || (isPioneer[_referSender] && _referSender != msg.sender), "Refer sender should be either valid or address 0");
+
+        // give bonus if refer sender is not address 0
+        if (_referSender != address(0)) {
             uint256 _referSenderTokens = _tokensPurchased.mul(referSenderBonusPercentage).div(100);
             uint256 _referReceiverTokens = _tokensPurchased.mul(referReceiverBonusPercentage).div(100);
 
@@ -150,50 +174,35 @@ contract Crowdsale is Claimable, Pausable {
             tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
             totalTokensAsReferralBonus = totalTokensAsReferralBonus.add(_referSenderTokens).add(_referReceiverTokens);
         }
+
+        // normal purchase
+        // update token
         tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
-        totalTokensPurchased = totalTokensPurchased.add(_tokensPurchased);
+        totalTokensPurchased = totalTokensPurchased.add(_tokensPurchased); 
+
+        // update pioneer weight when isPioneer
+        if (isPioneer[msg.sender]) {
+
+            // if the sender just becomes a pioneer
+            if(becomePioneer){
+                _increasedPioneerWeight = weiRaisedFrom[msg.sender];
+            }
+            // if the sender was a pioneer before
+            else {
+                _increasedPioneerWeight = _weiPaid;
+            }
+
+            // update weight
+            pioneerWeightOfUserInStage[msg.sender][_stageIdx] = pioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_increasedPioneerWeight);
+            totalPioneerWeightInStage[_stageIdx] = totalPioneerWeightInStage[_stageIdx].add(_increasedPioneerWeight);
+        }   
 
         emit TokensPurchased(
             msg.sender,
-            (isValidReferSender) ? _referSender : address(0),
+            _referSender,
             _weiPaid,
             _tokensPurchased
-        );
-
-        // must get currentStage before totalWeiRaised is updated.
-        uint256 _stageIdx = currentStage();
-
-        // update wei raised
-        weiRaisedFrom[msg.sender] = weiRaisedFrom[msg.sender].add(_weiPaid);
-        totalWeiRaised = totalWeiRaised.add(_weiPaid);
-
-        // update pioneer bonus weight
-        uint256 _increasedPioneerWeight = 0;
-        // if the sender has been a pioneer
-        if (isPioneer[msg.sender]) {
-            _increasedPioneerWeight = _weiPaid;
-        }
-        // if the sender was not a pioneer
-        else {
-            // During the time that users can become pioneers.
-            // And (total amount of ETH the sender has paid) >= pioneerWeiThreshold
-            if (block.timestamp <= pioneerTimeEnd && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
-                // the sender becomes a pioneer
-                isPioneer[msg.sender] = true;
-                _increasedPioneerWeight = weiRaisedFrom[msg.sender];
-            }
-        }
-
-        // update pioneer weight if necessary
-        if (_increasedPioneerWeight > 0) {
-            pioneerWeightOfUserInStage[msg.sender][_stageIdx] = pioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_increasedPioneerWeight);
-            totalPioneerWeightInStage[_stageIdx] = totalPioneerWeightInStage[_stageIdx].add(_increasedPioneerWeight);
-        }
-
-        // pay back unused ETH
-        if (msg.value > _weiPaid) {
-            msg.sender.transfer(msg.value.sub(_weiPaid));
-        }
+        );     
     }
 
     // -----------------------------------------
