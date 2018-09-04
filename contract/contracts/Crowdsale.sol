@@ -120,6 +120,8 @@ contract Crowdsale is Claimable, Pausable {
     }
 
     function purchaseTokens (address _referSender) public payable onlyWhileOpen {
+        address purchaser = msg.sender;
+
         require(msg.value > 0, "Must pay some ether.");
 
         // Check if hard cap has been reached.
@@ -135,11 +137,11 @@ contract Crowdsale is Claimable, Pausable {
         uint256 _tokensPurchased = _weiPaid.mul(rate);
 
         // Check if buying enough tokens
-        require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
+        require(tokensPurchased[purchaser].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
         bool isValidReferSender = (_referSender != address(0))
             && tokensPurchased[_referSender] != 0
-            && (_referSender != msg.sender);
+            && (_referSender != purchaser);
 
         // update token balances
         if (isValidReferSender) {
@@ -147,14 +149,14 @@ contract Crowdsale is Claimable, Pausable {
             uint256 _referReceiverTokens = _tokensPurchased.mul(referReceiverBonusPercentage).div(100);
 
             tokensReferSenderBonus[_referSender] = tokensReferSenderBonus[_referSender].add(_referSenderTokens);
-            tokensReferReceiverBonus[msg.sender] = tokensReferReceiverBonus[msg.sender].add(_referReceiverTokens);
+            tokensReferReceiverBonus[purchaser] = tokensReferReceiverBonus[purchaser].add(_referReceiverTokens);
             totalTokensAsReferralBonus = totalTokensAsReferralBonus.add(_referSenderTokens).add(_referReceiverTokens);
         }
-        tokensPurchased[msg.sender] = tokensPurchased[msg.sender].add(_tokensPurchased);
+        tokensPurchased[purchaser] = tokensPurchased[purchaser].add(_tokensPurchased);
         totalTokensPurchased = totalTokensPurchased.add(_tokensPurchased);
 
         emit TokensPurchased(
-            msg.sender,
+            purchaser,
             (isValidReferSender) ? _referSender : address(0),
             _weiPaid,
             _tokensPurchased
@@ -164,35 +166,35 @@ contract Crowdsale is Claimable, Pausable {
         uint256 _stageIdx = currentStage();
 
         // update wei raised
-        weiRaisedFrom[msg.sender] = weiRaisedFrom[msg.sender].add(_weiPaid);
+        weiRaisedFrom[purchaser] = weiRaisedFrom[purchaser].add(_weiPaid);
         totalWeiRaised = totalWeiRaised.add(_weiPaid);
 
         // update pioneer bonus weight
         uint256 _increasedPioneerWeight = 0;
         // if the sender has been a pioneer
-        if (isPioneer[msg.sender]) {
+        if (isPioneer[purchaser]) {
             _increasedPioneerWeight = _weiPaid;
         }
         // if the sender was not a pioneer
         else {
             // During the time that users can become pioneers.
             // And (total amount of ETH the sender has paid) >= pioneerWeiThreshold
-            if (block.timestamp <= pioneerTimeEnd && weiRaisedFrom[msg.sender] >= pioneerWeiThreshold) {
+            if (block.timestamp <= pioneerTimeEnd && weiRaisedFrom[purchaser] >= pioneerWeiThreshold) {
                 // the sender becomes a pioneer
-                isPioneer[msg.sender] = true;
-                _increasedPioneerWeight = weiRaisedFrom[msg.sender];
+                isPioneer[purchaser] = true;
+                _increasedPioneerWeight = weiRaisedFrom[purchaser];
             }
         }
 
         // update pioneer weight if necessary
         if (_increasedPioneerWeight > 0) {
-            pioneerWeightOfUserInStage[msg.sender][_stageIdx] = pioneerWeightOfUserInStage[msg.sender][_stageIdx].add(_increasedPioneerWeight);
+            pioneerWeightOfUserInStage[purchaser][_stageIdx] = pioneerWeightOfUserInStage[purchaser][_stageIdx].add(_increasedPioneerWeight);
             totalPioneerWeightInStage[_stageIdx] = totalPioneerWeightInStage[_stageIdx].add(_increasedPioneerWeight);
         }
 
         // pay back unused ETH
         if (msg.value > _weiPaid) {
-            msg.sender.transfer(msg.value.sub(_weiPaid));
+            purchaser.transfer(msg.value.sub(_weiPaid));
         }
     }
 
