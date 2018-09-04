@@ -101,7 +101,7 @@ contract Crowdsale is Claimable, Pausable {
 
     modifier onlyWhileOpen {
         require(block.timestamp >= openingTime && block.timestamp <= closingTime, "Crowdsale is not opened.");
-        require(!paused);
+        //require(!paused);
         _;
     }
 
@@ -115,11 +115,11 @@ contract Crowdsale is Claimable, Pausable {
     // Crowdsale external interface
     // -----------------------------------------
 
-    function () external payable onlyWhileOpen {
+    function () external payable onlyWhileOpen whenNotPaused {
         purchaseTokens(address(0));
     }
 
-    function purchaseTokens (address _referSender) public payable onlyWhileOpen {
+    function purchaseTokens (address _referSender) public payable onlyWhileOpen whenNotPaused {
         address purchaser = msg.sender;
 
         require(msg.value > 0, "Must pay some ether.");
