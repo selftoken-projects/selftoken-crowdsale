@@ -42,10 +42,10 @@ contract('Crowdsale', function (accounts) {
         crowdsale = await Crowdsale.new(openingTime, closingTime, pioneerTimeEnd);
     });
 
-    it("buyer1 becomes a pioneer and refers buyer2", async function () {
+    it("buyer1 becomes a valid referrer and refers buyer2", async function () {
 
         // buyer1 purchase token 
-        let amountToBuyWei = pioneerWeiThreshold;
+        let amountToBuyWei = ether(0.1);
         // no referrer
         await crowdsale.purchaseTokens(0, {from: buyer1, value: amountToBuyWei});
 
@@ -53,14 +53,14 @@ contract('Crowdsale', function (accounts) {
         tokens = amountToBuyWei.times(rate);
         totalTokens = totalTokens.plus(tokens);
 
-        // buyer1 becomes pioneer and a qualified referrer (referSender)
-        assert.equal(await crowdsale.isPioneer(buyer1), true);
+        // buyer1 becomes a qualified referrer (referSender)
+        (await crowdsale.balanceOf(buyer1)).should.be.bignumber.equal( tokens );
 
         // record buyer1, buyer2 original balance 
         let buyer1BalanceOriginal = await crowdsale.balanceOf(buyer1);
         let buyer2BalanceOriginal = await crowdsale.balanceOf(buyer2);
 
-        // buyer1 (pioneer) refers buyer2 to buy
+        // buyer1 refers buyer2 to buy
         amountToBuyWei = ether(0.1); // some random amount 
         let result = await crowdsale.purchaseTokens(buyer1, {from: buyer2, value: amountToBuyWei});
 
@@ -95,12 +95,9 @@ contract('Crowdsale', function (accounts) {
         let buyer2BalanceOriginal = await crowdsale.balanceOf(buyer2);
         let buyer3BalanceOriginal = await crowdsale.balanceOf(buyer3);
 
-        // buyer3 let buyer2 fill in his referral address (buyer1 tries to refer buyer2) -> fail
+        // buyer3 let buyer2 fill in his referral address (buyer1 tries to refer buyer2) 
         amountToBuyWei = ether(0.1); // some random amount 
-        await assertRevert(crowdsale.purchaseTokens(buyer3, {from: buyer2, value: amountToBuyWei}));
-
-        // buyer2 purchase token again without referrer -> succeed
-        crowdsale.purchaseTokens(0, {from: buyer2, value: amountToBuyWei});
+        await crowdsale.purchaseTokens(buyer3, {from: buyer2, value: amountToBuyWei});
 
         // update totalTokens
         tokens = amountToBuyWei.times(rate);

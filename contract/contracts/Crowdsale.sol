@@ -138,7 +138,7 @@ contract Crowdsale is Claimable, Pausable {
         require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
         bool isValidReferSender = (_referSender != address(0))
-            && tokensPurchased[msg.sender] != 0
+            && tokensPurchased[_referSender] != 0
             && (_referSender != msg.sender);
 
         // update token balances
