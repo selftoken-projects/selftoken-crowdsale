@@ -327,14 +327,13 @@ contract Crowdsale is Claimable, Pausable {
         // TODO: change to fixed address?
         require(amount <= address(this).balance, "withdraw amount exceeds contract balance");
 
-        msg.sender.transfer(amount);
         emit Withdraw(amount);
+        msg.sender.transfer(amount);
     }
 
     function withdrawAll () public onlyOwner {
         // TODO: change to fixed address?
-        uint totalBalance = address(this).balance;
+        emit Withdraw(address(this).balance);
         msg.sender.transfer(address(this).balance);
-        emit Withdraw(totalBalance);
     }
 }
