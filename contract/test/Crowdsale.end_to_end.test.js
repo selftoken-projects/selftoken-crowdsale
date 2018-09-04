@@ -88,18 +88,10 @@ contract('Crowdsale', function (accounts) {
         .should.be.bignumber.equal( totalTokens));
     });
 
-    it("buyer3 is not a pioneer but tries to refer buyer2", async function () {
+    it("buyer3 does not hold any token but tries to refer buyer2", async function () {
 
-        // buyer3 purchase token 
-        let amountToBuyWei = pioneerWeiThreshold.minus(10);
-        await crowdsale.purchaseTokens(buyer2, {from: buyer3, value: amountToBuyWei});
-
-        // update totalTokens
-        tokens = amountToBuyWei.times(rate);
-        totalTokens = totalTokens.plus(tokens);
-
-        // buyer3 does not become a qualified referrer (referSender)
-        assert.equal(await crowdsale.isPioneer(buyer3), false);
+        // buyer3 is not a qualified referrer because he does not hold any token (referSender)
+        assert.equal(await crowdsale.tokensPurchased(buyer3), 0);
 
         // record buyer2, buyer3 original balance 
         let buyer2BalanceOriginal = await crowdsale.balanceOf(buyer2);
@@ -111,7 +103,7 @@ contract('Crowdsale', function (accounts) {
 
         // update totalTokens
         tokens = amountToBuyWei.times(rate);
-        // cannot include refer bonus here since buyer1 is not a qualified referrer
+        // cannot include refer bonus here since buyer3 is not a qualified referrer
         totalTokens = totalTokens.plus(tokens);
 
         // buyer3 does not gain bonus (his balance remains the same)

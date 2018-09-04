@@ -138,7 +138,7 @@ contract Crowdsale is Claimable, Pausable {
         require(tokensPurchased[msg.sender].add(_tokensPurchased) >= minTokensPurchased, "Purchasing not enough amount of tokens.");
 
         bool isValidReferSender = (_referSender != address(0))
-            && isPioneer[_referSender]
+            && tokensPurchased[msg.sender] != 0
             && (_referSender != msg.sender);
 
         // update token balances
@@ -244,6 +244,25 @@ contract Crowdsale is Claimable, Pausable {
             .add(pioneerBonusPerStage.mul(currentStage()))
         );
     }
+
+     /// @return state of a user
+    function getUserState(address _user) public view
+    returns (
+        bool _isPioneer,
+        uint256 _weiRaisedFrom,
+        uint256 _tokensPurchased,
+        uint256 _tokensReferSenderBonus,
+        uint256 _tokensReferReceiverBonus,
+        uint256 _pioneerBonus
+    ) {
+        _isPioneer = isPioneer[_user];
+        _weiRaisedFrom = weiRaisedFrom[_user];
+        _tokensPurchased = tokensPurchased[_user];
+        _tokensReferSenderBonus = tokensReferSenderBonus[_user];
+        _tokensReferReceiverBonus = tokensReferReceiverBonus[_user];
+        _pioneerBonus = calcPioneerBonus(_user);
+    }
+
 
     // -----------------------------------------
     // setters
