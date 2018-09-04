@@ -38,6 +38,14 @@ contract('CrowdSale', function (accounts) {
         var _owner = await crowdSale.owner();
         assert.equal(_owner, anyone, "owner should be changed to new owner");
 
+        // test if the new owner can pause
+        var result = await crowdSale.pause({from: anyone});
+        assert.equal(result.logs[0].event, "Pause");
+
+        // test if new owner can unpause
+        result = await crowdSale.unpause({from: anyone});
+        assert.equal(result.logs[0].event, "Unpause");
+
         // transfer back ownership to original owner
         await crowdSale.transferOwnership(owner, {from: anyone});
         var result = await crowdSale.claimOwnership({from: owner});
