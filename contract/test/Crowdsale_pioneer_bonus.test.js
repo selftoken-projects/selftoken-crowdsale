@@ -38,6 +38,7 @@ let totalTokens = new BigNumber(0);
 
 contract('Crowdsale', function (accounts) {
     const [owner, buyer1, buyer2, buyer3, anyone] = accounts;
+    const address_0 = 0x0000000000000000000000000000000000000000;
 
     context('test referral bonus', function () {
         it("should deploy new contract", async function () {
@@ -50,7 +51,7 @@ contract('Crowdsale', function (accounts) {
         it("should be a pioneer after paying >= pioneerWeiThreshold", async function () {
             totalTokens = pioneerWeiThreshold.times(rate);
 
-            await crowdsale.purchaseTokens(anyone, {from: buyer1, value: pioneerWeiThreshold});
+            await crowdsale.purchaseTokens(address_0, {from: buyer1, value: pioneerWeiThreshold});
             assert.equal(await crowdsale.isPioneer(buyer1), true);
         });
 
@@ -127,7 +128,7 @@ contract('Crowdsale', function (accounts) {
          * crowdsale deployed
         */
         it("should buyer1 be able to pay weiRaisedPerStage * 3", async function () {
-            await crowdsale.purchaseTokens(anyone, {from: buyer1, value: weiRaisedPerStage.times(3)});
+            await crowdsale.purchaseTokens(address_0, {from: buyer1, value: weiRaisedPerStage.times(3)});
         });
 
         /* [Begin State]
@@ -155,7 +156,7 @@ contract('Crowdsale', function (accounts) {
          * - buyer1 (pioneer): pioneerBonusPerStage * 3
         */
         it("should buyer2 be able to pay weiRaisedPerStage * 2", async function () {
-            await crowdsale.purchaseTokens(anyone, {from: buyer2, value: weiRaisedPerStage.times(2)});
+            await crowdsale.purchaseTokens(address_0, {from: buyer2, value: weiRaisedPerStage.times(2)});
         });
 
         /* [Begin State]
@@ -199,7 +200,7 @@ contract('Crowdsale', function (accounts) {
          * - buyer2 (pioneer): pioneerBonusPerStage * 2 / 5 * 2
         */
         it("should allow buyer3 be able to pay weiRaisedPerStage * 7", async function () {
-            await crowdsale.purchaseTokens(anyone, {from: buyer3, value: weiRaisedPerStage.times(7)});
+            await crowdsale.purchaseTokens(address_0, {from: buyer3, value: weiRaisedPerStage.times(7)});
         });
 
         /* [Begin State]
